@@ -99,27 +99,27 @@
  * Code time
  */
 
-const _ = require("lodash");
+// const _ = require("lodash");
 
-const outputs = [
-  [10, 0.5, 16, 1],
-  [200, 0.5, 16, 4],
-  [400, 0.5, 16, 4],
-  [400, 0.5, 16, 4],
-];
+// const outputs = [
+//   [10, 0.5, 16, 1],
+//   [200, 0.5, 16, 4],
+//   [400, 0.5, 16, 4],
+//   [400, 0.5, 16, 4],
+// ];
 
-const k = 3;
+// const k = 3;
 
-/**
- * Generalized version of the distance function.
- * Were here we find the absolute distance between two drop distance points.
- * @param {*} pointA
- * @param {*} pointB
- * @returns
- */
-const distance = (pointA, pointB) => {
-  return Math.abs(pointA - pointB);
-};
+// /**
+//  * Generalized version of the distance function.
+//  * Were here we find the absolute distance between two drop distance points.
+//  * @param {*} pointA
+//  * @param {*} pointB
+//  * @returns
+//  */
+// const distance = (pointA, pointB) => {
+//   return Math.abs(pointA - pointB);
+// };
 
 // const runAnalysis = () => {
 //   const testSetSize = 10;
@@ -138,6 +138,58 @@ const distance = (pointA, pointB) => {
 
 //   console.log("Accuracy: ", numberCorrect / testSetSize);
 // };
+
+// /**
+//  * Splits our overall data into a test set and training set.
+//  * @param {*} data - 2D array of data records.
+//  * @param {*} testCount - the index that the records should be split into training and test sets.
+//  * @returns an array holding the test dataset and the training dataset.
+//  */
+// const splitDataSet = (data, testCount) => {
+//   const shuffled = _.shuffle(data);
+//   const testSet = _.slice(shuffled, 0, testCount); // [START, testCount)
+//   const trainingSet = _slice(shuffled, testCount); // [testCount, END]
+
+//   return [testSet, trainingSet];
+// };
+
+// /**
+//  * More Generalized KNN algorithm.
+//  * @param {*} data - a 2D array of data points.
+//  * @param {*} point - A drop distance to observe. (If we dropped a ball from x distance, what box would it fall into? This is the x value.)
+//  * @returns - An predicted output of what box a ball would fall into.
+//  */
+// const knn = (data, point) => {
+//   return _.chain(data)
+//     .map((row) => [distance(row[0], point), row[3]])
+//     .sortBy((row) => row[0])
+//     .slice(0, k)
+//     .countBy((row) => row[1])
+//     .toPairs()
+//     .sortBy((row) => row[1])
+//     .last()
+//     .first()
+//     .parseInt()
+//     .value();
+// };
+
+/**
+ * So... With the work done in the run Analysis function we now have
+ *   a way to analyze how accurate our algorithm predicting outputs.
+ *
+ * This now allows us to start considering other avenues that may lead us
+ * towards our ultimate goal: maximizing the accuracy of our algorithm.
+ *
+ */
+
+const _ = require("lodash");
+
+const outputs = [
+  [10, 0.5, 16, 1],
+  [200, 0.5, 16, 4],
+  [400, 0.5, 16, 4],
+  [400, 0.5, 16, 4],
+];
 
 /**
  * Splits our overall data into a test set and training set.
@@ -154,12 +206,61 @@ const splitDataSet = (data, testCount) => {
 };
 
 /**
- * More Generalized KNN algorithm.
- * @param {*} data - a 2D array of data points.
- * @param {*} point - A drop distance to observe. (If we dropped a ball from x distance, what box would it fall into? This is the x value.)
+ * Generalized version of the distance function.
+ * Were here we find the absolute distance between two drop distance points.
+ * @param {*} pointA
+ * @param {*} pointB
+ * @returns
+ */
+const distance = (pointA, pointB) => {
+  return Math.abs(pointA - pointB);
+};
+
+const runAnalysis = () => {
+  // n = 10 would be considered too small in sample size but 200 might be too large as well.
+  const testSetSize = 10;
+  const [testSet, trainingSet] = splitDataSet(outputs, testSetSize);
+
+  // we'll rewrite this using lodash
+
+  // const numberCorrect = 0;
+  // testSet.forEach((testRecord) => {
+  //   const bucket = knn(trainingSet, testRecord[0]);
+  //   // // At this point, bucket contains the estimation,
+  //   // // testRecord[3] contains the actual value.
+  //   // console.log(bucket, testRecord[3]);
+  //   if (bucket === testRecord[3]) {
+  //     numberCorrect++;
+  //   }
+  // });
+  // console.log("Accuracy: ", numberCorrect / testSetSize);
+
+  _.range(1, 15).forEach((k) => {
+    const accuracy = _.chain(testSet)
+      .filter(
+        (testRecord) => knn(trainingSet, testRecord[0], k) === testRecord[3]
+      )
+      .size()
+      .divide(testSetSize)
+      .value();
+
+    console.log(`For k of ${k}, accuracy is ${accuracy}`);
+  });
+  // So just above we can use this to approximate the value of k that gives
+  // us the highest accuracy in our test sets.
+};
+
+// Now we have to revisit our knn function to apply multiple values
+// of k over a specific range.
+
+/**
+ * More Generalized KNN algorithm. With variable k.
+ * @param {Array[Array]} data - a 2D array of data points.
+ * @param {number} point - A drop distance to observe. (If we dropped a ball from x distance, what box would it fall into? This is the x value.)
+ * @param {number} k - The number of outputs to observe.(? is that correct?)
  * @returns - An predicted output of what box a ball would fall into.
  */
-const knn = (data, point) => {
+const knn = (data, point, k) => {
   return _.chain(data)
     .map((row) => [distance(row[0], point), row[3]])
     .sortBy((row) => row[0])
@@ -174,28 +275,11 @@ const knn = (data, point) => {
 };
 
 /**
- * So... With the work done in the run Analysis function we now have
- *   a way to analyze how accurate our algorithm predicting outputs.
+ * So with the new additions we would be able to see our accuracy increase or
+ * decrease at different values of k.
  *
- * This now allows us to start considering other avenues that may lead us
- * towards our ultimate goal: maximizing the accuracy of our algorithm.
+ * But it still might be inaccurate (20% - 50% accuracy).
+ * So.. Now we can consider applying knn with multiple variables.
  *
+ * Let's try adding elasticity!
  */
-
-// const runAnalysis = () => {
-//   const testSetSize = 10;
-//   const [testSet, trainingSet] = splitDataSet(outputs, testSetSize);
-
-//   const numberCorrect = 0;
-//   testSet.forEach((testRecord) => {
-//     const bucket = knn(trainingSet, testRecord[0]);
-//     // // At this point, bucket contains the estimation,
-//     // // testRecord[3] contains the actual value.
-//     // console.log(bucket, testRecord[3]);
-//     if (bucket === testRecord[3]) {
-//       numberCorrect++;
-//     }
-//   });
-
-//   console.log("Accuracy: ", numberCorrect / testSetSize);
-// };
